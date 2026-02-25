@@ -67,10 +67,16 @@ export interface SettingStore {
   exaScope: string;
   bochaApiKey: string;
   bochaApiProxy: string;
+  braveApiKey: string;
+  braveApiProxy: string;
   searxngApiProxy: string;
   searxngScope: string;
   parallelSearch: number;
+  autoReviewRounds: number;
+  maxCollectionTopics: number;
   searchMaxResult: number;
+  searchIncludeDomains: string;
+  searchExcludeDomains: string;
   crawler: string;
   language: string;
   theme: string;
@@ -80,6 +86,9 @@ export interface SettingStore {
   smoothTextStreamType: "character" | "word" | "line";
   onlyUseLocalResource: "enable" | "disable";
   useFileFormatResource: "enable" | "disable";
+  reportStyle: "balanced" | "executive" | "technical" | "concise";
+  reportLength: "brief" | "standard" | "comprehensive";
+  deepResearchPromptOverrides: string;
 }
 
 interface SettingActions {
@@ -153,10 +162,16 @@ export const defaultValues: SettingStore = {
   exaScope: "research paper",
   bochaApiKey: "",
   bochaApiProxy: "",
+  braveApiKey: "",
+  braveApiProxy: "",
   searxngApiProxy: "",
   searxngScope: "all",
   parallelSearch: 1,
+  autoReviewRounds: 0,
+  maxCollectionTopics: 5,
   searchMaxResult: 5,
+  searchIncludeDomains: "",
+  searchExcludeDomains: "",
   crawler: "jina",
   language: "",
   theme: "system",
@@ -166,6 +181,9 @@ export const defaultValues: SettingStore = {
   smoothTextStreamType: "word",
   onlyUseLocalResource: "disable",
   useFileFormatResource: "disable",
+  reportStyle: "balanced",
+  reportLength: "standard",
+  deepResearchPromptOverrides: "",
 };
 
 export const useSettingStore = create(
@@ -175,6 +193,6 @@ export const useSettingStore = create(
       update: (values) => set(values),
       reset: () => set(defaultValues),
     }),
-    { name: "setting" }
-  )
+    { name: "setting" },
+  ),
 );

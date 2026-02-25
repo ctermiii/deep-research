@@ -31,6 +31,7 @@ import {
   FormLabel,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -65,9 +66,11 @@ import {
   FIRECRAWL_BASE_URL,
   EXA_BASE_URL,
   BOCHA_BASE_URL,
+  BRAVE_BASE_URL,
   SEARXNG_BASE_URL,
 } from "@/constants/urls";
 import locales from "@/constants/locales";
+import { parseDeepResearchPromptOverrides } from "@/constants/prompts";
 import {
   filterThinkingModelList,
   filterNetworkingModelList,
@@ -160,10 +163,16 @@ const formSchema = z.object({
   exaScope: z.string().optional(),
   bochaApiKey: z.string().optional(),
   bochaApiProxy: z.string().optional(),
+  braveApiKey: z.string().optional(),
+  braveApiProxy: z.string().optional(),
   searxngApiProxy: z.string().optional(),
   searxngScope: z.string().optional(),
   parallelSearch: z.number().min(1).max(5),
+  autoReviewRounds: z.number().min(0).max(5),
+  maxCollectionTopics: z.number().min(1).max(20),
   searchMaxResult: z.number().min(1).max(10),
+  searchIncludeDomains: z.string().optional(),
+  searchExcludeDomains: z.string().optional(),
   language: z.string().optional(),
   theme: z.string().optional(),
   debug: z.enum(["enable", "disable"]).optional(),
@@ -172,6 +181,11 @@ const formSchema = z.object({
   smoothTextStreamType: z.enum(["character", "word", "line"]).optional(),
   onlyUseLocalResource: z.enum(["enable", "disable"]).optional(),
   useFileFormatResource: z.enum(["enable", "disable"]).optional(),
+  reportStyle: z
+    .enum(["balanced", "executive", "technical", "concise"])
+    .optional(),
+  reportLength: z.enum(["brief", "standard", "comprehensive"]).optional(),
+  deepResearchPromptOverrides: z.string().optional(),
 });
 
 function convertModelName(name: string) {
@@ -273,23 +287,23 @@ function Setting({ open, onClose }: SettingProps) {
           : [];
       return disabledAIProviders.includes(provider);
     },
-    [mode]
+    [mode],
   );
 
   const isDisabledAIModel = useCallback(
     (model: string) => {
       if (mode === "local") return false;
       const { availableModelList, disabledModelList } = getCustomModelList(
-        MODEL_LIST.length > 0 ? MODEL_LIST.split(",") : []
+        MODEL_LIST.length > 0 ? MODEL_LIST.split(",") : [],
       );
       const isAvailableModel = availableModelList.some(
-        (availableModel) => availableModel === model
+        (availableModel) => availableModel === model,
       );
       if (isAvailableModel) return false;
       if (disabledModelList.includes("all")) return true;
       return disabledModelList.some((disabledModel) => disabledModel === model);
     },
-    [mode]
+    [mode],
   );
 
   const isDisabledSearchProvider = useCallback(
@@ -300,7 +314,7 @@ function Setting({ open, onClose }: SettingProps) {
           : [];
       return disabledSearchProviders.includes(provider);
     },
-    [mode]
+    [mode],
   );
 
   const installPWA = async () => {
@@ -315,6 +329,12 @@ function Setting({ open, onClose }: SettingProps) {
   }
 
   function handleSubmit(values: z.infer<typeof formSchema>) {
+    try {
+      parseDeepResearchPromptOverrides(values.deepResearchPromptOverrides);
+    } catch {
+      toast.error(t("setting.promptOverridesInvalid"));
+      return;
+    }
     update(values);
     onClose();
   }
@@ -542,7 +562,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "apiKey",
-                                  form.getValues("apiKey")
+                                  form.getValues("apiKey"),
                                 )
                               }
                             />
@@ -565,7 +585,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "apiProxy",
-                                  form.getValues("apiProxy")
+                                  form.getValues("apiProxy"),
                                 )
                               }
                             />
@@ -597,7 +617,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "googleVertexProject",
-                                  form.getValues("googleVertexProject")
+                                  form.getValues("googleVertexProject"),
                                 )
                               }
                             />
@@ -623,7 +643,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "googleVertexLocation",
-                                  form.getValues("googleVertexLocation")
+                                  form.getValues("googleVertexLocation"),
                                 )
                               }
                             />
@@ -646,7 +666,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "googleClientEmail",
-                                  form.getValues("googleClientEmail")
+                                  form.getValues("googleClientEmail"),
                                 )
                               }
                             />
@@ -670,7 +690,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "googlePrivateKey",
-                                  form.getValues("googlePrivateKey")
+                                  form.getValues("googlePrivateKey"),
                                 )
                               }
                             />
@@ -693,7 +713,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "googlePrivateKeyId",
-                                  form.getValues("googlePrivateKeyId")
+                                  form.getValues("googlePrivateKeyId"),
                                 )
                               }
                             />
@@ -726,7 +746,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "openRouterApiKey",
-                                  form.getValues("openRouterApiKey")
+                                  form.getValues("openRouterApiKey"),
                                 )
                               }
                             />
@@ -749,7 +769,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "openRouterApiProxy",
-                                  form.getValues("openRouterApiProxy")
+                                  form.getValues("openRouterApiProxy"),
                                 )
                               }
                             />
@@ -782,7 +802,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "openAIApiKey",
-                                  form.getValues("openAIApiKey")
+                                  form.getValues("openAIApiKey"),
                                 )
                               }
                             />
@@ -805,7 +825,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "openAIApiProxy",
-                                  form.getValues("openAIApiProxy")
+                                  form.getValues("openAIApiProxy"),
                                 )
                               }
                             />
@@ -838,7 +858,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "anthropicApiKey",
-                                  form.getValues("anthropicApiKey")
+                                  form.getValues("anthropicApiKey"),
                                 )
                               }
                             />
@@ -861,7 +881,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "anthropicApiProxy",
-                                  form.getValues("anthropicApiProxy")
+                                  form.getValues("anthropicApiProxy"),
                                 )
                               }
                             />
@@ -894,7 +914,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "deepseekApiKey",
-                                  form.getValues("deepseekApiKey")
+                                  form.getValues("deepseekApiKey"),
                                 )
                               }
                             />
@@ -917,7 +937,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "deepseekApiProxy",
-                                  form.getValues("deepseekApiProxy")
+                                  form.getValues("deepseekApiProxy"),
                                 )
                               }
                             />
@@ -950,7 +970,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "xAIApiKey",
-                                  form.getValues("xAIApiKey")
+                                  form.getValues("xAIApiKey"),
                                 )
                               }
                             />
@@ -973,7 +993,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "xAIApiProxy",
-                                  form.getValues("xAIApiProxy")
+                                  form.getValues("xAIApiProxy"),
                                 )
                               }
                             />
@@ -1006,7 +1026,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "mistralApiKey",
-                                  form.getValues("mistralApiKey")
+                                  form.getValues("mistralApiKey"),
                                 )
                               }
                             />
@@ -1029,7 +1049,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "mistralApiProxy",
-                                  form.getValues("mistralApiProxy")
+                                  form.getValues("mistralApiProxy"),
                                 )
                               }
                             />
@@ -1062,7 +1082,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "azureApiKey",
-                                  form.getValues("azureApiKey")
+                                  form.getValues("azureApiKey"),
                                 )
                               }
                             />
@@ -1088,7 +1108,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "azureResourceName",
-                                  form.getValues("azureResourceName")
+                                  form.getValues("azureResourceName"),
                                 )
                               }
                             />
@@ -1111,7 +1131,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "azureApiVersion",
-                                  form.getValues("azureApiVersion")
+                                  form.getValues("azureApiVersion"),
                                 )
                               }
                             />
@@ -1144,7 +1164,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "openAICompatibleApiKey",
-                                  form.getValues("openAICompatibleApiKey")
+                                  form.getValues("openAICompatibleApiKey"),
                                 )
                               }
                             />
@@ -1167,7 +1187,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "openAICompatibleApiProxy",
-                                  form.getValues("openAICompatibleApiProxy")
+                                  form.getValues("openAICompatibleApiProxy"),
                                 )
                               }
                             />
@@ -1196,7 +1216,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "pollinationsApiProxy",
-                                  form.getValues("pollinationsApiProxy")
+                                  form.getValues("pollinationsApiProxy"),
                                 )
                               }
                             />
@@ -1225,7 +1245,7 @@ function Setting({ open, onClose }: SettingProps) {
                               onBlur={() =>
                                 updateSetting(
                                   "ollamaApiProxy",
-                                  form.getValues("ollamaApiProxy")
+                                  form.getValues("ollamaApiProxy"),
                                 )
                               }
                             />
@@ -1261,7 +1281,7 @@ function Setting({ open, onClose }: SettingProps) {
                             onBlur={() =>
                               updateSetting(
                                 "accessPassword",
-                                form.getValues("accessPassword")
+                                form.getValues("accessPassword"),
                               )
                             }
                           />
@@ -1301,7 +1321,7 @@ function Setting({ open, onClose }: SettingProps) {
                               >
                                 <SelectValue
                                   placeholder={t(
-                                    "setting.modelListLoadingPlaceholder"
+                                    "setting.modelListLoadingPlaceholder",
                                   )}
                                 />
                               </SelectTrigger>
@@ -1385,7 +1405,7 @@ function Setting({ open, onClose }: SettingProps) {
                               >
                                 <SelectValue
                                   placeholder={t(
-                                    "setting.modelListLoadingPlaceholder"
+                                    "setting.modelListLoadingPlaceholder",
                                   )}
                                 />
                               </SelectTrigger>
@@ -1475,7 +1495,7 @@ function Setting({ open, onClose }: SettingProps) {
                               >
                                 <SelectValue
                                   placeholder={t(
-                                    "setting.modelListLoadingPlaceholder"
+                                    "setting.modelListLoadingPlaceholder",
                                   )}
                                 />
                               </SelectTrigger>
@@ -1559,7 +1579,7 @@ function Setting({ open, onClose }: SettingProps) {
                               >
                                 <SelectValue
                                   placeholder={t(
-                                    "setting.modelListLoadingPlaceholder"
+                                    "setting.modelListLoadingPlaceholder",
                                   )}
                                 />
                               </SelectTrigger>
@@ -1705,7 +1725,7 @@ function Setting({ open, onClose }: SettingProps) {
                               >
                                 <SelectValue
                                   placeholder={t(
-                                    "setting.modelListLoadingPlaceholder"
+                                    "setting.modelListLoadingPlaceholder",
                                   )}
                                 />
                               </SelectTrigger>
@@ -1789,7 +1809,7 @@ function Setting({ open, onClose }: SettingProps) {
                               >
                                 <SelectValue
                                   placeholder={t(
-                                    "setting.modelListLoadingPlaceholder"
+                                    "setting.modelListLoadingPlaceholder",
                                   )}
                                 />
                               </SelectTrigger>
@@ -1879,7 +1899,7 @@ function Setting({ open, onClose }: SettingProps) {
                               >
                                 <SelectValue
                                   placeholder={t(
-                                    "setting.modelListLoadingPlaceholder"
+                                    "setting.modelListLoadingPlaceholder",
                                   )}
                                 />
                               </SelectTrigger>
@@ -1944,7 +1964,7 @@ function Setting({ open, onClose }: SettingProps) {
                               >
                                 <SelectValue
                                   placeholder={t(
-                                    "setting.modelListLoadingPlaceholder"
+                                    "setting.modelListLoadingPlaceholder",
                                   )}
                                 />
                               </SelectTrigger>
@@ -2015,7 +2035,7 @@ function Setting({ open, onClose }: SettingProps) {
                               >
                                 <SelectValue
                                   placeholder={t(
-                                    "setting.modelListLoadingPlaceholder"
+                                    "setting.modelListLoadingPlaceholder",
                                   )}
                                 />
                               </SelectTrigger>
@@ -2099,7 +2119,7 @@ function Setting({ open, onClose }: SettingProps) {
                               >
                                 <SelectValue
                                   placeholder={t(
-                                    "setting.modelListLoadingPlaceholder"
+                                    "setting.modelListLoadingPlaceholder",
                                   )}
                                 />
                               </SelectTrigger>
@@ -2189,7 +2209,7 @@ function Setting({ open, onClose }: SettingProps) {
                               >
                                 <SelectValue
                                   placeholder={t(
-                                    "setting.modelListLoadingPlaceholder"
+                                    "setting.modelListLoadingPlaceholder",
                                   )}
                                 />
                               </SelectTrigger>
@@ -2254,7 +2274,7 @@ function Setting({ open, onClose }: SettingProps) {
                               >
                                 <SelectValue
                                   placeholder={t(
-                                    "setting.modelListLoadingPlaceholder"
+                                    "setting.modelListLoadingPlaceholder",
                                   )}
                                 />
                               </SelectTrigger>
@@ -2325,7 +2345,7 @@ function Setting({ open, onClose }: SettingProps) {
                               >
                                 <SelectValue
                                   placeholder={t(
-                                    "setting.modelListLoadingPlaceholder"
+                                    "setting.modelListLoadingPlaceholder",
                                   )}
                                 />
                               </SelectTrigger>
@@ -2409,7 +2429,7 @@ function Setting({ open, onClose }: SettingProps) {
                               >
                                 <SelectValue
                                   placeholder={t(
-                                    "setting.modelListLoadingPlaceholder"
+                                    "setting.modelListLoadingPlaceholder",
                                   )}
                                 />
                               </SelectTrigger>
@@ -2561,7 +2581,7 @@ function Setting({ open, onClose }: SettingProps) {
                                 <SelectTrigger>
                                   <SelectValue
                                     placeholder={t(
-                                      "setting.modelListLoadingPlaceholder"
+                                      "setting.modelListLoadingPlaceholder",
                                     )}
                                   />
                                 </SelectTrigger>
@@ -2626,7 +2646,7 @@ function Setting({ open, onClose }: SettingProps) {
                                 <SelectTrigger>
                                   <SelectValue
                                     placeholder={t(
-                                      "setting.modelListLoadingPlaceholder"
+                                      "setting.modelListLoadingPlaceholder",
                                     )}
                                   />
                                 </SelectTrigger>
@@ -2689,7 +2709,7 @@ function Setting({ open, onClose }: SettingProps) {
                               >
                                 <SelectValue
                                   placeholder={t(
-                                    "setting.modelListLoadingPlaceholder"
+                                    "setting.modelListLoadingPlaceholder",
                                   )}
                                 />
                               </SelectTrigger>
@@ -2773,7 +2793,7 @@ function Setting({ open, onClose }: SettingProps) {
                               >
                                 <SelectValue
                                   placeholder={t(
-                                    "setting.modelListLoadingPlaceholder"
+                                    "setting.modelListLoadingPlaceholder",
                                   )}
                                 />
                               </SelectTrigger>
@@ -2871,7 +2891,7 @@ function Setting({ open, onClose }: SettingProps) {
                                 <SelectTrigger>
                                   <SelectValue
                                     placeholder={t(
-                                      "setting.modelListLoadingPlaceholder"
+                                      "setting.modelListLoadingPlaceholder",
                                     )}
                                   />
                                 </SelectTrigger>
@@ -2936,7 +2956,7 @@ function Setting({ open, onClose }: SettingProps) {
                                 <SelectTrigger>
                                   <SelectValue
                                     placeholder={t(
-                                      "setting.modelListLoadingPlaceholder"
+                                      "setting.modelListLoadingPlaceholder",
                                     )}
                                   />
                                 </SelectTrigger>
@@ -3038,6 +3058,10 @@ function Setting({ open, onClose }: SettingProps) {
                             {!isDisabledSearchProvider("exa") &&
                             mode === "proxy" ? (
                               <SelectItem value="exa">Exa</SelectItem>
+                            ) : null}
+                            {!isDisabledSearchProvider("brave") &&
+                            mode === "proxy" ? (
+                              <SelectItem value="brave">Brave</SelectItem>
                             ) : null}
                             {!isDisabledSearchProvider("bocha") ? (
                               <SelectItem value="bocha">
@@ -3316,6 +3340,52 @@ function Setting({ open, onClose }: SettingProps) {
                   </div>
                   <div
                     className={cn("space-y-4", {
+                      hidden: searchProvider !== "brave",
+                    })}
+                  >
+                    <FormField
+                      control={form.control}
+                      name="braveApiKey"
+                      render={({ field }) => (
+                        <FormItem className="from-item">
+                          <FormLabel className="from-label">
+                            {t("setting.apiKeyLabel")}
+                            <span className="ml-1 text-red-500 max-sm:hidden">
+                              *
+                            </span>
+                          </FormLabel>
+                          <FormControl className="form-field">
+                            <Password
+                              type="text"
+                              placeholder={t("setting.searchApiKeyPlaceholder")}
+                              disabled={form.getValues("enableSearch") === "0"}
+                              {...field}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="braveApiProxy"
+                      render={({ field }) => (
+                        <FormItem className="from-item">
+                          <FormLabel className="from-label">
+                            {t("setting.apiUrlLabel")}
+                          </FormLabel>
+                          <FormControl className="form-field">
+                            <Input
+                              placeholder={BRAVE_BASE_URL}
+                              disabled={form.getValues("enableSearch") === "0"}
+                              {...field}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div
+                    className={cn("space-y-4", {
                       hidden: searchProvider !== "searxng",
                     })}
                   >
@@ -3401,6 +3471,67 @@ function Setting({ open, onClose }: SettingProps) {
                 />
                 <FormField
                   control={form.control}
+                  name="autoReviewRounds"
+                  render={({ field }) => (
+                    <FormItem className="from-item">
+                      <FormLabel className="from-label">
+                        <HelpTip tip={t("setting.autoReviewRoundsTip")}>
+                          {t("setting.autoReviewRounds")}
+                        </HelpTip>
+                      </FormLabel>
+                      <FormControl className="form-field">
+                        <div className="flex h-9">
+                          <Slider
+                            className="flex-1"
+                            value={[field.value]}
+                            max={5}
+                            min={0}
+                            step={1}
+                            disabled={form.getValues("enableSearch") === "0"}
+                            onValueChange={(values) =>
+                              field.onChange(values[0])
+                            }
+                          />
+                          <span className="w-[14%] text-center text-sm leading-10">
+                            {field.value}
+                          </span>
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="maxCollectionTopics"
+                  render={({ field }) => (
+                    <FormItem className="from-item">
+                      <FormLabel className="from-label">
+                        <HelpTip tip={t("setting.maxCollectionTopicsTip")}>
+                          {t("setting.maxCollectionTopics")}
+                        </HelpTip>
+                      </FormLabel>
+                      <FormControl className="form-field">
+                        <div className="flex h-9">
+                          <Slider
+                            className="flex-1"
+                            value={[field.value]}
+                            max={20}
+                            min={1}
+                            step={1}
+                            onValueChange={(values) =>
+                              field.onChange(values[0])
+                            }
+                          />
+                          <span className="w-[14%] text-center text-sm leading-10">
+                            {field.value}
+                          </span>
+                        </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="searchMaxResult"
                   render={({ field }) => (
                     <FormItem className="from-item">
@@ -3426,6 +3557,58 @@ function Setting({ open, onClose }: SettingProps) {
                             {field.value}
                           </span>
                         </div>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="searchIncludeDomains"
+                  render={({ field }) => (
+                    <FormItem className="from-item">
+                      <FormLabel className="from-label">
+                        <HelpTip tip={t("setting.searchIncludeDomainsTip")}>
+                          {t("setting.searchIncludeDomains")}
+                        </HelpTip>
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={2}
+                          className="form-field"
+                          placeholder={t("setting.searchDomainsPlaceholder")}
+                          disabled={
+                            form.getValues("enableSearch") === "0" ||
+                            form.getValues("searchProvider") === "model"
+                          }
+                          {...field}
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="searchExcludeDomains"
+                  render={({ field }) => (
+                    <FormItem className="from-item">
+                      <FormLabel className="from-label">
+                        <HelpTip tip={t("setting.searchExcludeDomainsTip")}>
+                          {t("setting.searchExcludeDomains")}
+                        </HelpTip>
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={2}
+                          className="form-field"
+                          placeholder={t("setting.searchDomainsPlaceholder")}
+                          disabled={
+                            form.getValues("enableSearch") === "0" ||
+                            form.getValues("searchProvider") === "model"
+                          }
+                          {...field}
+                          value={field.value || ""}
+                        />
                       </FormControl>
                     </FormItem>
                   )}
@@ -3664,6 +3847,71 @@ function Setting({ open, onClose }: SettingProps) {
                 />
                 <FormField
                   control={form.control}
+                  name="reportStyle"
+                  render={({ field }) => (
+                    <FormItem className="from-item">
+                      <FormLabel className="from-label">
+                        <HelpTip tip={t("setting.reportStyleTip")}>
+                          {t("setting.reportStyle")}
+                        </HelpTip>
+                      </FormLabel>
+                      <FormControl>
+                        <Select {...field} onValueChange={field.onChange}>
+                          <SelectTrigger className="form-field">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="balanced">
+                              {t("setting.reportStyleValue.balanced")}
+                            </SelectItem>
+                            <SelectItem value="executive">
+                              {t("setting.reportStyleValue.executive")}
+                            </SelectItem>
+                            <SelectItem value="technical">
+                              {t("setting.reportStyleValue.technical")}
+                            </SelectItem>
+                            <SelectItem value="concise">
+                              {t("setting.reportStyleValue.concise")}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="reportLength"
+                  render={({ field }) => (
+                    <FormItem className="from-item">
+                      <FormLabel className="from-label">
+                        <HelpTip tip={t("setting.reportLengthTip")}>
+                          {t("setting.reportLength")}
+                        </HelpTip>
+                      </FormLabel>
+                      <FormControl>
+                        <Select {...field} onValueChange={field.onChange}>
+                          <SelectTrigger className="form-field">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="brief">
+                              {t("setting.reportLengthValue.brief")}
+                            </SelectItem>
+                            <SelectItem value="standard">
+                              {t("setting.reportLengthValue.standard")}
+                            </SelectItem>
+                            <SelectItem value="comprehensive">
+                              {t("setting.reportLengthValue.comprehensive")}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="onlyUseLocalResource"
                   render={({ field }) => (
                     <FormItem className="from-item">
@@ -3714,6 +3962,28 @@ function Setting({ open, onClose }: SettingProps) {
                             </SelectItem>
                           </SelectContent>
                         </Select>
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="deepResearchPromptOverrides"
+                  render={({ field }) => (
+                    <FormItem className="from-item">
+                      <FormLabel className="from-label">
+                        <HelpTip tip={t("setting.promptOverridesTip")}>
+                          {t("setting.promptOverrides")}
+                        </HelpTip>
+                      </FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={8}
+                          className="form-field font-mono text-xs leading-5"
+                          placeholder={t("setting.promptOverridesPlaceholder")}
+                          {...field}
+                          value={field.value || ""}
+                        />
                       </FormControl>
                     </FormItem>
                   )}
